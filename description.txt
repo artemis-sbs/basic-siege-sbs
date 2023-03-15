@@ -1,0 +1,3 @@
+Uncategorized
+This is a Cosmos game script using the sbs_utils library.  It is a portal to adventures in space.
+
