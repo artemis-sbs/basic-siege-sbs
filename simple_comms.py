@@ -118,8 +118,8 @@ def to_station_comms_message(sim, button_tag, player_id, event):
 
 
 def to_raider_comms_selected(sim, player_id, event):
-    sbs.send_comms_button_info(event.origin_id, "white", "You're Ugly", "taunt_tag");
-    sbs.send_comms_button_info(event.origin_id, "white", "Surrender now", "surrender_tag");
+    sbs.send_comms_button_info(event.origin_id, "white", "You're Ugly", "taunt_tag")
+    sbs.send_comms_button_info(event.origin_id, "white", "Surrender now", "surrender_tag")
 
 
 def to_raider_comms_message(sim, button_tag, player_id, event):
