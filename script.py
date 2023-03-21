@@ -52,6 +52,9 @@ class SiegeStory(PyMastStory):
       
 
     def start_client(self):
+        # Have change_console route here
+        self.watch_event("client_change", self.start_client)
+
         players = []
         pick_player = None
         for player in query.to_object_list(query.role("__PLAYER__")):
