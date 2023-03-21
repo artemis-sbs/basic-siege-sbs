@@ -27,6 +27,7 @@ class SiegeStory(PyMastStory):
         super().__init__()
         self.start_text = "Mission: Basic Siege written in PyMast"
         self.enemt_count = 5
+        self.player_count = 0
 
     def start_server(self):
         self.vars.enemy_count = 5
@@ -36,7 +37,7 @@ class SiegeStory(PyMastStory):
         slider = self.gui_slider(self.vars.enemy_count, 0, 20, None)
         self.gui_row()
         text = self.gui_text(f"Enemy count: {self.vars.enemy_count}")
-
+        
         def on_message(_,__,event ):
             if event.sub_tag==slider.tag:
                 self.vars.enemy_count = int(slider.value+0.4)
@@ -48,10 +49,45 @@ class SiegeStory(PyMastStory):
         yield self.await_gui({
             "Start Mission": self.start
         }, on_message=on_message)
-        
+      
 
     def start_client(self):
-        print("Start Client")
+        players = []
+        pick_player = None
+        for player in query.to_object_list(query.role("__PLAYER__")):
+            players.append(player.name)
+        if self.player_count != players:
+            if len(players):
+                player = players[0]
+                players = ",".join(players)
+                self.gui_section("area: 25, 65, 39, 90;row-height: 45px;")
+                pick_player = self.gui_radio(players, player, True)
+
+        self.gui_section("area: 75, 65, 99, 90;")
+        console = self.gui_radio("Helm, Weapons, Comms, Engineering, Science", "Helm", True)
+
+        def console_selected():
+            pass
+
+        yield self.await_gui({
+            "Accept": console_selected
+        })
+        if pick_player is None:
+            yield self.jump(self.start_client)
+        player_name = pick_player.value
+        console_sel = console.value
+        print(f"{player_name} {console_sel}")
+
+        self.assign_player_ship(player_name)
+        self.gui_console(console_sel)
+        yield self.await_gui({
+            "Accept": console_selected
+        })
+
+        
+
+        
+
 
     def start(self):
         print("Start")
@@ -337,5 +373,5 @@ class StoryPage(PyMastStoryPage):
     story = SiegeStory()
 
 Gui.server_start_page_class(StoryPage)
-Gui.client_start_page_class(ClientSelectPage)
+Gui.client_start_page_class(StoryPage)
 
