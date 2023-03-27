@@ -2,7 +2,7 @@ import sbslibs
 import sbs
 import sbs_utils.query as query
 import sbs_utils.faces as faces
-from sbs_utils.pymast import PollResults
+from sbs_utils.pymast.pollresults import PollResults
 
 
 ########################################################################################################

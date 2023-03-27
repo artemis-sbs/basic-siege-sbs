@@ -12,7 +12,7 @@ from sbs_utils.gui import Gui
 from sbs_utils.pages.start import ClientSelectPage, StartPage
 from sbs_utils.objects import PlayerShip, Npc, Terrain
 import sbs_utils.query as query
-from sbs_utils.pymast.pymaststory import PyMastStory, PollResults
+from sbs_utils.pymast.pymaststory import PyMastStory
 from sbs_utils.pymast.pymaststorypage import PyMastStoryPage
 from docking_tasks import task_player_docking
 from station_tasks import task_station_building
@@ -34,7 +34,7 @@ class SiegeStory(PyMastStory):
         self.gui_section("area: 0, 10, 99, 90;")
         self.gui_text(self.start_text)
         self.gui_section("area: 60, 75, 99, 89;row-height: 30px")
-        slider = self.gui_slider(self.vars.enemy_count, 0, 20, None)
+        slider = self.gui_slider(self.vars.enemy_count, 0, 20, False, None)
         self.gui_row()
         text = self.gui_text(f"Enemy count: {self.vars.enemy_count}")
         
@@ -80,16 +80,14 @@ class SiegeStory(PyMastStory):
         player_name = pick_player.value
         console_sel = console.value
         print(f"{player_name} {console_sel}")
-
-        self.assign_player_ship(player_name)
-        self.gui_console(console_sel)
-        yield self.await_gui({
-            "Accept": console_selected
-        })
-
-        
-
-        
+        # Keep running the console
+        while True:
+            self.assign_player_ship(player_name)
+            self.gui_console(console_sel)
+            yield self.await_gui({
+                "Accept": console_selected
+            })
+            print("Somehow the await gui ended")
 
 
     def start(self):

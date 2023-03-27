@@ -1,7 +1,7 @@
 import sbslibs
 import sbs
 import sbs_utils.query as query
-from sbs_utils.pymast import PollResults
+from sbs_utils.pymast.pollresults import PollResults
 
 def task_player_docking(story):
     # self is the async story
