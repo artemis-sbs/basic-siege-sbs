@@ -14,6 +14,7 @@ from sbs_utils.objects import PlayerShip, Npc, Terrain
 import sbs_utils.query as query
 from sbs_utils.pymast.pymaststory import PyMastStory
 from sbs_utils.pymast.pymaststorypage import PyMastStoryPage
+from sbs_utils.pymast.pollresults import PollResults
 from docking_tasks import task_player_docking
 from station_tasks import task_station_building
 
@@ -26,23 +27,22 @@ class SiegeStory(PyMastStory):
     def __init__(self):
         super().__init__()
         self.start_text = "Mission: Basic Siege written in PyMast"
-        self.enemt_count = 5
+        self.enemy_count = 5
         self.player_count = 0
 
     def start_server(self):
-        self.vars.enemy_count = 5
         self.gui_section("area: 0, 10, 99, 90;")
         self.gui_text(self.start_text)
         self.gui_section("area: 60, 75, 99, 89;row-height: 30px")
-        slider = self.gui_slider(self.vars.enemy_count, 0, 20, False, None)
+        slider = self.gui_slider(self.enemy_count, 0, 20, False, None)
         self.gui_row()
-        text = self.gui_text(f"Enemy count: {self.vars.enemy_count}")
+        text = self.gui_text(f"Enemy count: {self.enemy_count}")
         
-        def on_message(_,__,event ):
+        def on_message(__,event ):
             if event.sub_tag==slider.tag:
-                self.vars.enemy_count = int(slider.value+0.4)
-                text.value = f"Enemy count: {self.vars.enemy_count}"
-                slider.value = self.vars.enemy_count
+                self.enemy_count = int(slider.value+0.4)
+                text.value = f"Enemy count: {self.enemy_count}"
+                slider.value = self.enemy_count
                 return True
             return False
 
@@ -50,11 +50,17 @@ class SiegeStory(PyMastStory):
             "Start Mission": self.start
         }, on_message=on_message)
       
+    def client_change(self, sim, event):
+        if event.sub_tag=="change_console":
+            yield self.jump(self.start_client)
+
 
     def start_client(self):
         # Have change_console route here
-        self.watch_event("client_change", self.start_client)
-
+        #
+        # Events are not workign properly
+        #
+        self.watch_event("client_change", self.client_change)
         players = []
         pick_player = None
         for player in query.to_object_list(query.role("__PLAYER__")):
@@ -78,16 +84,45 @@ class SiegeStory(PyMastStory):
         if pick_player is None:
             yield self.jump(self.start_client)
         player_name = pick_player.value
-        console_sel = console.value
-        print(f"{player_name} {console_sel}")
+        console_sel = console.value.lower()
+        #print(f"{player_name} {console_sel}")
         # Keep running the console
         while True:
             self.assign_player_ship(player_name)
-            self.gui_console(console_sel)
+            
+            if console_sel == "helm":
+                self.gui_activate_console("helm")
+                self.gui_section("area: 0, 2, 85, 100-30px;")
+                self.gui_console_widget("2dview")
+                self.gui_section("area: 0, 60, 7, 100-30px;")
+                self.gui_console_widget("throttle")
+                self.gui_section("area: 7, 75, 30, 100-30px;")
+                self.gui_console_widget("helm_movement")
+
+                self.gui_section("area: 80, 0, 100, 25;")
+                self.gui_console_widget("main_screen_control")
+
+                self.gui_section("area: 85, 25, 100, 25+60px;")
+                self.gui_console_widget("request_dock")
+                self.gui_row()
+                self.gui_console_widget("shield_control")
+
+                self.gui_section("area: 85, 25+60px,100, 100-30px")
+                self.gui_console_widget("ship_data")
+                self.gui_row()
+                self.gui_console_widget("3dview")
+                self.gui_row()
+                self.gui_console_widget("text_waterfall")
+            else:
+                self.gui_console(console_sel)
+                
+                #widgets = "3dview^2dview^helm_movement^throttle^request_dock^shield_control^ship_data^text_waterfall^main_screen_control"
+
             yield self.await_gui({
                 "Accept": console_selected
             })
-            print("Somehow the await gui ended")
+            
+            
 
 
     def start(self):
@@ -305,7 +340,7 @@ class SiegeStory(PyMastStory):
         enemy_prefix = "KLMNQ"
 
         enemy = 0
-        enemy_count = self.vars.enemy_count
+        enemy_count = self.enemy_count
         if enemy_count <1:
             enemy_count = 1
 
