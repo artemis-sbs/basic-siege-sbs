@@ -9,14 +9,14 @@ def task_player_docking(story):
     while True:
         yield story.delay(task_delay)
         player_ships = query.role("basic_docking")
-        if len(player_ships):
+        if len(player_ships)==0:
             return PollResults.OK_END
         
         for player_ship_id in player_ships:
             if story.sim.space_object_exists(player_ship_id):
 
                 player = story.sim.get_space_object(player_ship_id)
-                blob = query.get_engine_data_set(player_ship_id, story.sim)
+                blob = query.get_engine_data_set(story.sim, player_ship_id)
                 
                 dock_state_string = blob.get("dock_state", 0)
                 if "undocked" == dock_state_string:
@@ -27,13 +27,9 @@ def task_player_docking(story):
 
                     dock_rng = 600
 
-                    station_scan = sbs.broad_test(-dock_rng + player.pos.x, -dock_rng + player.pos.z, dock_rng + player.pos.x, dock_rng + player.pos.z, 1)
-                    for thing in station_scan:
-                        if "behav_station" == thing.tick_type:
-                            # check to see if the player ship is close enough to be offered the option of docking
-                            distance_value = sbs.distance(thing, player)
-                            if distance_value <= dock_rng:
-                                blob.set("dock_base_id", thing.unique_ID) # set the dock-able id of the player to this station
+                    closest = query.closest(player_ship_id, query.role("Station") & query.broad_test(-dock_rng + player.pos.x, -dock_rng + player.pos.z, dock_rng + player.pos.x, dock_rng + player.pos.z, 1))
+                    if closest is not None:
+                        blob.set("dock_base_id", query.to_id(closest)) # set the dock-able id of the player to this station
 
                 dock_station_id = blob.get("dock_base_id", 0)
                 if story.sim.space_object_exists(dock_station_id):
@@ -95,4 +91,4 @@ def task_player_docking(story):
                             damage = max(0.0, min(damage - system_coeff, max_damage)) # clamp the value
                             if changed:
                                 blob.set("system_damage", damage, g)
-        yield PollResults.RUN_NEXT_TICK
+        yield PollResults.OK_RUN_AGAIN

@@ -18,7 +18,9 @@ def task_station_building(story):
             break
         #print("Station building")
         for station_id in stations:
-            blob = query.get_engine_data_set(station_id, story.sim)
+            blob = query.get_engine_data_set(story.sim, station_id)
+            if blob is None:
+                continue
         
             station_name = blob.get("name_tag",0);
 
