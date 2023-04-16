@@ -54,7 +54,6 @@ class SiegeStory(PyMastStory):
         if event.sub_tag=="change_console":
             yield self.jump(self.start_client)
 
-
     def start_client(self):
         # Have change_console route here
         #
@@ -81,42 +80,15 @@ class SiegeStory(PyMastStory):
         yield self.await_gui({
             "Accept": console_selected
         })
+
         if pick_player is None:
             yield self.jump(self.start_client)
         player_name = pick_player.value
         console_sel = console.value.lower()
-        #print(f"{player_name} {console_sel}")
         # Keep running the console
         while True:
             self.assign_player_ship(player_name)
-            
-            if console_sel == "helm":
-                self.gui_activate_console("helm")
-                self.gui_section("area: 0, 2, 85, 100-30px;")
-                self.gui_console_widget("2dview")
-                self.gui_section("area: 0, 60, 7, 100-30px;")
-                self.gui_console_widget("throttle")
-                self.gui_section("area: 7, 75, 30, 100-30px;")
-                self.gui_console_widget("helm_movement")
-
-                self.gui_section("area: 80, 0, 100, 25;")
-                self.gui_console_widget("main_screen_control")
-
-                self.gui_section("area: 85, 25, 100, 25+60px;")
-                self.gui_console_widget("request_dock")
-                self.gui_row()
-                self.gui_console_widget("shield_control")
-
-                self.gui_section("area: 85, 25+60px,100, 100-30px")
-                self.gui_console_widget("ship_data")
-                self.gui_row()
-                self.gui_console_widget("3dview")
-                self.gui_row()
-                self.gui_console_widget("text_waterfall")
-            else:
-                self.gui_console(console_sel)
-                
-                #widgets = "3dview^2dview^helm_movement^throttle^request_dock^shield_control^ship_data^text_waterfall^main_screen_control"
+            self.gui_console(console_sel)
 
             yield self.await_gui({
                 "Accept": console_selected
@@ -131,15 +103,15 @@ class SiegeStory(PyMastStory):
         sbs.create_new_sim()
         self.build_world()
         sbs.resume_sim()
-        print("World built")
-        # Example story functions define outside the story
-        self.schedule_task(task_station_building)
-        self.schedule_task(task_player_docking)
+                
         # Example story functions define inside the story
         self.schedule_task(self.task_end_game)
         self.schedule_task(self.task_npc_targeting)
         self.schedule_task(self.task_science_scan)
         self.schedule_task(self.task_comms)
+        # Example story functions define outside the story
+        self.schedule_task(task_station_building)
+        self.schedule_task(task_player_docking)
 
     def task_end_game(self):
         #print(self.__class__)
@@ -390,20 +362,6 @@ class SiegeStory(PyMastStory):
                 v2.y = abs(v2.y) % 500 * (v2.y/abs(v2.y))
                 Terrain().spawn(sim, v2.x, v2.y, v2.z,None, None, a_type, "behav_mine")
 
-#story = SiegeStory()
-
-# end of my python script program file
-# def start_mission(sim, _):
-#     global story
-#     sbs.create_new_sim()
-#     story.add_scheduler(sim, story.start)
-#     sbs.resume_sim()
-# # if "continue" == message_tag:
-# # 	sbs.resume_sim()
-
-# the_start_page = StartPage("Mission: Basic Siege.^^This is a simple mission script for testing purposes.", start_mission)
-# def start_page():
-#     return the_start_page
 
 class StoryPage(PyMastStoryPage):
     story = SiegeStory()
