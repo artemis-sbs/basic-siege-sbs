@@ -1,1 +1,1 @@
-artemis-sbs sbs_utils v0.6.8
+artemis-sbs sbs_utils v0.6.9

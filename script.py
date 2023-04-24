@@ -34,7 +34,7 @@ class SiegeStory(PyMastStory):
         self.gui_section("area: 0, 10, 99, 90;")
         self.gui_text(self.start_text)
         self.gui_section("area: 60, 75, 99, 89;row-height: 30px")
-        slider = self.gui_slider(self.enemy_count, 0, 20, False, None)
+        slider = self.gui_slider(self.enemy_count, f"low:0; high: 20;show_number:True", None)
         self.gui_row()
         text = self.gui_text(f"Enemy count: {self.enemy_count}")
         
