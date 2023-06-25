@@ -33,7 +33,7 @@ class SpawnRouter:
         if the_target is not None:
             query.target(self.task.sim, self.task.SPAWNED_ID, the_target, True)
 
-        yield self.delay(5)
+        yield self.delay(5, use_sim=True)
         yield self.jump(self.npc_targeting)
 
     #
@@ -70,7 +70,7 @@ class SpawnRouter:
         #
         # call this logic every 5 seconds
         #
-        yield self.delay(seconds=5)
+        yield self.delay(seconds=5, use_sim=True)
         yield self.jump(self.ai_task_friendly)
 
 

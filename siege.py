@@ -2,9 +2,11 @@ import sbs
 from sbs_utils.objects import PlayerShip, Npc, Terrain
 import random
 import sbs_utils.faces as faces
+import sbs_utils.query as query
 import sbs_utils.scatter as scatter
 import sbs_utils.names as names
 from sbs_utils.pymast.pymasttask import label
+from sbs_utils.gridobject import GridObject
 
 #######################################################################################################
 #######################################################################################################
@@ -23,11 +25,33 @@ def  build_world(self):
     # 	engine_object: any
     # 	blob: any
     # 	py_object: EngineObject
-    player_ship = PlayerShip().spawn(sim,1200,0,200, "Artemis", "tsn", "tsn_battle_cruiser")
-    faces.set_face(player_ship.id, faces.random_terran())
-    sbs.assign_client_to_ship(0, player_ship.id)
-    # Mark this as a player that does basic docking
-    player_ship.py_object.add_role("basic_docking")
+    first = True
+    colors  = ["yellow", "green", "blue"]
+    c = 0
+    #do print(f"{player_count}")
+    for player_ship_data in self.player_list:
+        if c>= self.player_count:
+            # make sure the id is cleared dry docked ships
+            player_ship_data.id = None
+            continue
+
+        player_ship = query.to_id(PlayerShip().spawn(self.task.sim, *player_ship_data.spawn_point, player_ship_data.name, player_ship_data.side, player_ship_data.ship))
+        c+=1
+        player_ship_data.id = player_ship
+
+        faces.set_face(player_ship, player_ship_data.face)
+        if first:
+            sbs.assign_client_to_ship(0,player_ship)
+            first = False
+        points = query.get_open_grid_points(sim,player_ship)
+        
+        for i in range(3):
+            if len(points)>0:
+                point = random.choice(points)
+                points.remove(point)
+                GridObject().spawn(self.task.sim, player_ship, f"DC{i+1}", f"DC{i+1}", point[0],point[1], 80, colors[i], "damcons")
+
+
     ########################
     ## Enable comms and science scanning
     #ConsoleDispatcher.add_select(player_ship.id, 'comms_target_UID', player_comms_selected)

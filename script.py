@@ -17,12 +17,18 @@ import siege
 from consoles import ClientGui
 from extra_gui import ExtraGui
 from map_common import MapCommon
-
-
+from grid_ai import GridAi
+from internal_damage import InternalDamage
+from game_results import GameResults
 #enemies_to_make = 5
 origin_station_id = 0
 
-class SiegeStory(PyMastStory, ClientGui, CommsRouter, SpawnRouter, ScienceRouter, ExtraGui, MapCommon):
+# Uses mixin for modular design
+class SiegeStory(PyMastStory, ClientGui, CommsRouter, 
+                SpawnRouter, ScienceRouter, ExtraGui, 
+                MapCommon, GridAi, 
+                InternalDamage, GameResults
+                ):
     def __init__(self):
         super().__init__()
 
@@ -40,15 +46,6 @@ class SiegeStory(PyMastStory, ClientGui, CommsRouter, SpawnRouter, ScienceRouter
             MastDataObject({"name": "Ceres", "id": None, "side": "tsn", "ship": "tsn_battle_cruiser", "spawn_point": (-500,0, -200) , "face": faces.random_terran()}),
             MastDataObject({"name": "Diana", "id": None , "side": "tsn", "ship": "tsn_battle_cruiser", "spawn_point": (-700,0, -300), "face": faces.random_terran()}),
         ]
-        self.game_stats = {
-            "tsn_destroyed": 0,
-            "raider_destroyed": 0,
-            "kralien_ships_destroyed": 0,
-            "skaraan_ships_destroyed": 0,
-            "arvonian_ships_destroyed": 0,
-            "torgoth_ships_destroyed": 0,
-            "start_time": 0
-        }
 
         self.route_science_select(self.handle_science)
         #self.route_destroy(self.update_score)
@@ -107,78 +104,32 @@ class SiegeStory(PyMastStory, ClientGui, CommsRouter, SpawnRouter, ScienceRouter
                 self.anom_select = anom_select.value.lower()
                 return True
             return False
-
+        self.reroute_gui_clients(self.start_client)
         yield self.await_gui({
             "justify: center; text:Start Mission": self.start
         }, on_message=on_message)
 
+        #self.reroute_gui_clients(self.game_started_client)
 
-    # ========== show_game_results ===============
     @label()
-    def show_game_results(self):
-        sbs.pause_sim()
-        
-        self.gui_section("area: 10, 10, 99, 90;")
-        self.gui_text("color:white;justify: center; font: gui-6;text:Game results")
-        self.gui_row()
-        self.gui_text(f"color:cyan;justify:center;font:gui-5;text:{self.start_text}")
-        self.gui_row()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_text("color:yellow; text:TSN Destroyed")
-        self.gui_text(f"""color:yellow;justify: right; text:{self.game_stats["tsn_destroyed"]}""")
-        self.gui_row()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_text("""color:yellow; text:Raider Destroyed""")
-        self.gui_text(f"""color:yellow;justify: right; text:{self.game_stats["raider_destroyed"]}""")
-        self.gui_row()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_text("""color:yellow; text:arvonian ships destroyed""")
-        self.gui_text(f"""color:yellow;justify: right; text:{self.game_stats["arvonian_ships_destroyed"]}""")
-        self.gui_row()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_text("""color:yellow; text:kralien ships destroyed""")
-        self.gui_text(f"""color:yellow;justify: right; text:{self.game_stats["kralien_ships_destroyed"]}""")
-        self.gui_row()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_text("""color:yellow; text:skaraan ships destroyed""")
-        self.gui_text(f"""color:yellow;justify: right; text:{self.game_stats["skaraan_ships_destroyed"]}""")
-        self.gui_row()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_text("""color:yellow; text:torgoth ships destroyed""")
-        self.gui_text(f"""color:yellow;justify: right; text:{self.game_stats["torgoth_ships_destroyed"]}""")
-        self.gui_row()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        self.gui_hole()
-        end_time = int((self.task.sim.time_tick_counter - self.game_stats["start_time"]) / 30  /60)
-        self.gui_text("""color:yellow; right; text:Game Time""")
-        self.gui_text(f"""color:yellow;justify: right; text:{end_time} minutes""")
+    def pause_screen(self):
+        #
+        # Shown if the simulation is paused
+        #
 
-        if self.task.page.client_id == 0:
-            yield self.await_gui({
-                "play again": self.start
-            })
-        else:
-            yield self.await_gui()
+        self.gui_section("area: 5, 10, 50, 90;")
+        self.gui_text("""Simulation paused""")
+
+        @label()
+        def resume():
+            sbs.resume_sim()
+            yield self.jump(self.pause_screen)
+
+        yield self.await_gui({
+            "Resume Mission": resume
+        })
+
+        
             
 
     @label()
@@ -187,6 +138,7 @@ class SiegeStory(PyMastStory, ClientGui, CommsRouter, SpawnRouter, ScienceRouter
         siege.build_world(self)
         self.spawn_friendly_npc()
         sbs.resume_sim()
+        self.game_started = True
 
         self.game_stats["start_time"] = self.task.sim.time_tick_counter
                 
@@ -198,6 +150,7 @@ class SiegeStory(PyMastStory, ClientGui, CommsRouter, SpawnRouter, ScienceRouter
         # Note that this tasks end, the end game logic 
         # will reroute to a new task.
         #
+        yield self.jump(self.pause_screen)
 
     @label()
     def task_end_game(self):
@@ -217,25 +170,10 @@ class SiegeStory(PyMastStory, ClientGui, CommsRouter, SpawnRouter, ScienceRouter
             yield self.reroute_gui_all(self.show_game_results)
             return
         
-        yield self.delay(5)
+        yield self.delay(5, use_sim=True)
         yield self.jump(self.task_end_game)
 
-    @label()
-    def update_score(self):
-        obj = query.to_object(self.task.DESTROYED_ID)
-        if obj is not None:
-            side = "{obj.side.lower()}_destroyed"
-            count = self.game_stats.get(side, 0)
-            self.game_stats[side] = count + 1
-
-            race = obj.art_id
-            under = race.find("_")
-            if under>=0:
-                race = race[0:under]
-                race = "{race.lower()}_ships_destroyed"
-                count = self.game_stats.get(race, 0)
-                self.game_stats[race] = count + 1
-
+    
 class StoryPage(PyMastStoryPage):
     story = SiegeStory()
 
