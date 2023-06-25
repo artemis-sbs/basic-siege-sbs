@@ -1,6 +1,7 @@
 import sbs
 import sbs_utils.query as query
 from sbs_utils.pymast.pymasttask import label
+from sbs_utils import faces
 
 class CommsRouter:
     def __init__(self, *args, **kwargs):
@@ -13,16 +14,60 @@ class CommsRouter:
         # start the comms for the players and stations
         # Each ship will have its of thread for comms
         # this enables them to have a unique path
-        if query.has_roles(self.task.COMMS_SELECTED_ID, "tsn, Station"):
+        
+        if self.task.COMMS_SELECTED_ID == self.task.COMMS_ORIGIN_ID:
+            # This is the same ship
+            yield self.jump(self.internal_comms)
+        elif query.has_roles(self.task.COMMS_SELECTED_ID, "tsn, friendly"):
+            yield self.jump(self.friendly_comms)
+        elif query.has_roles(self.task.COMMS_SELECTED_ID, "tsn, Station"):
             self.task.torpedo_build_type = sbs.TORPEDO.HOMING
             yield self.jump(self.station_comms)
         elif query.has_role(self.task.COMMS_SELECTED_ID, "Raider"):
             yield self.jump(self.npc_comms)
 
+#================ internal_comms ==================
+    @label()
+    def internal_comms(self):
+        #
+        # Setup faces for the departments
+        #
+        self.task.doctor = faces.random_terran()
+        self.task.biologist = faces.random_terran()
+        self.task.counselor = faces.random_terran()
+        self.task.major = faces.random_terran()
+        yield self.jump(self.internal_comms_loop)
+
+    # ================ internal_comms_loop ==================
+    @label()
+    def internal_comms_loop(self):
+        def button_sickbay(story, comms):
+            comms.receive("The crew health is great!", face=story.task.doctor, color="blue", title="sickbay")
+        def button_security(story, comms):
+            comms.receive("All secure", face=story.task.major, color="red", title="security")
+        def button_exobiology(story, comms):
+            comms.receive("Testing running, one moment", face=story.task.biologist, color="green", title="exobiology")
+        def button_counselor(story, comms):
+            comms.receive("Something is disturbing the crew", face=story.task.counselor, color="cyan", title="counselor")
+            yield story.task.delay(seconds=2, use_sim=True)
+            comms.receive("Things feel like they are getting worse", face=story.task.counselor, color="cyan", title="counselor")
+        
+        yield self.await_comms({
+            "sickbay": button_sickbay,
+            "security": button_security,
+            "exobiology": button_exobiology,
+            "counselor": button_counselor,
+        })
+        # loop
+        yield self.jump(self.internal_comms_loop)
+
+        # -> internal_comms_loop
+
     @label()
     def station_comms(self):
         #task, player_id, npc_id_or_filter, scans ) -> None:
-        self.await_comms({
+        print("STart station comms")
+        yield self.await_comms({
             "Hail": self.comms_station_hail,
             "Build Homing": self.comms_build_homing,
             "Build Nuke": self.comms_build_nuke,
@@ -33,7 +78,7 @@ class CommsRouter:
 
     @label()
     def npc_comms(self):
-        self.await_comms({
+        yield self.await_comms({
             "Hail": self.comms_raider_hail,
             "Taunt": ("red", self.comms_raider_taunt),
             "Surrender": ("yellow", self.comms_raider_surrender),
@@ -121,3 +166,18 @@ class CommsRouter:
 
     def comms_raider_surrender(self, comms):
         comms.receive("We will never surrender, disgusting Terran scum!")
+
+    #================ friendly_comms ==================
+    @label()
+    def friendly_comms(self):
+        comms_client_id = self.task.EVENT.client_id
+        def give_orders(story, comms):
+            story.reroute_gui_client(comms_client_id, story.friendly_give_orders)
+
+        yield self.await_comms({
+            "Give Orders": give_orders
+        })
+            
+
+        yield self.jump(self.friendly_comms)
+

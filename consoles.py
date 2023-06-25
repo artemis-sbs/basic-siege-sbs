@@ -1,6 +1,7 @@
 import sbs
 import sbs_utils.query as query
 from sbs_utils.pymast.pymasttask import label
+import functools
 
 class ClientGui:
     def __init__(self, *args, **kwargs):
@@ -22,23 +23,37 @@ class ClientGui:
 
         self.gui_section("area: 75, 65, 99, 90;")
         console = self.gui_radio("Helm, Weapons, Comms, Engineering, Science", "Helm", True)
+        self.task.PLAYER_NAME = "artemis"
+        self.task.CONSOLE_SELECT = "helm"
 
-        def console_selected():
-            pass
+        def on_message(sim, event):
+            #
+            # Not sure I like passing data this way
+            # but it is similar to mast
+            # maybe inventory should be used on client_id
+            #
+            if pick_player is not None and event.sub_tag == pick_player.tag:
+                self.task.PLAYER_NAME = pick_player.value
+                return True
+            elif event.sub_tag.startswith(console.tag):
+                self.task.CONSOLE_SELECT = console.value
+                return True
+            return False
 
+        #, pick_player, console
         yield self.await_gui({
-            "Accept": console_selected
-        })
+            "Accept": self.show_console_selected
+        }, on_message=on_message)
 
-        if pick_player is None:
-            yield self.jump(self.start_client)
-        player_name = pick_player.value
-        console_sel = console.value.lower()
-        # Keep running the console
-        while True:
-            self.assign_player_ship(player_name)
-            self.gui_console(console_sel)
-
-            yield self.await_gui()
             
     
+    def show_console_selected(self):
+        if self.task.PLAYER_NAME is None or self.task.CONSOLE_SELECT is None:
+            yield self.jump(self.start_client)
+        
+        # Keep running the console
+        while True:
+            self.assign_player_ship(self.task.PLAYER_NAME)
+            self.gui_console(self.task.CONSOLE_SELECT)
+
+            yield self.await_gui()

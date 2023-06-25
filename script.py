@@ -15,15 +15,16 @@ from basic_ai import SpawnRouter
 from science import ScienceRouter
 import siege
 from consoles import ClientGui
+from extra_gui import ExtraGui
+from map_common import MapCommon
 
 
 #enemies_to_make = 5
 origin_station_id = 0
 
-class SiegeStory(PyMastStory, ClientGui, CommsRouter, SpawnRouter, ScienceRouter):
+class SiegeStory(PyMastStory, ClientGui, CommsRouter, SpawnRouter, ScienceRouter, ExtraGui, MapCommon):
     def __init__(self):
         super().__init__()
-
 
         self.start_text = "Mission: Basic Siege written in PyMast"
         self.enemy_count = 5
@@ -75,11 +76,15 @@ class SiegeStory(PyMastStory, ClientGui, CommsRouter, SpawnRouter, ScienceRouter
         terrain_select = self.gui_drop_down("text: Terrain;list:None, Few,Some, lots, many")
         self.gui_row()
         self.gui_text("""justify:right;text:Friendly Ships""")
-        terrain_select = self.gui_drop_down("text: Friendly Ships;list:None, Few,Some, lots, many")
+        friendly_select = self.gui_drop_down("text: Friendly Ships;list:None, Few,Some, lots, many")
         self.gui_row()
         self.gui_text("""justify:right;text:Anomalies""")
         anom_select = self.gui_drop_down("text: Anomalies;list:None, Few,Some, lots, many")
 
+        self.world_select = "siege"
+        self.friendly_select = "none"
+        self.terrain_select = "none"
+        self.anom_select = "none"
         def on_message(__,event ):
             if event.sub_tag==difficulty.tag:
                 self.enemy_count = int(difficulty.value+0.4)
@@ -88,6 +93,18 @@ class SiegeStory(PyMastStory, ClientGui, CommsRouter, SpawnRouter, ScienceRouter
             elif event.sub_tag==player_count.tag:
                 self.player_count = int(player_count.value+0.4)
                 player_count.value = self.player_count
+                return True
+            elif event.sub_tag==friendly_select.tag:
+                self.friendly_select = friendly_select.value.lower()
+                return True
+            elif event.sub_tag==world_select.tag:
+                self.world_select = world_select.value.lower()
+                return True
+            elif event.sub_tag==terrain_select.tag:
+                self.terrain_select = terrain_select.value.lower()
+                return True
+            elif event.sub_tag==anom_select.tag:
+                self.anom_select = anom_select.value.lower()
                 return True
             return False
 
@@ -168,6 +185,7 @@ class SiegeStory(PyMastStory, ClientGui, CommsRouter, SpawnRouter, ScienceRouter
     def start(self):
         sbs.create_new_sim()
         siege.build_world(self)
+        self.spawn_friendly_npc()
         sbs.resume_sim()
 
         self.game_stats["start_time"] = self.task.sim.time_tick_counter
