@@ -1,24 +1,7 @@
 import sbs
 import sbs_utils.query as query
 from sbs_utils.pymast.pymasttask import label
-
-
-intel_list=[
-"The captain is very proud of their beautiful ship.",
-"The captain is vain and proud of their handsome face.",
-"The captain is spiritual a devout to the Kralien religion.",
-"The captain is fashion conscous and proud of their attractive uniform.",
-"The captain loves the Arvonian royal family.",
-"The captain has unfailing faith in the decisions of the Arvonian Supreme Understander.",
-"The captain loves their mother and is proud that she is so beautiful.",
-"The captain and their spouse have a very stable, loving relationship.",
-"The captain is meticulous and proud of their impeccable hygiene.",
-"The captain is proud to command the fastest ship in the galaxy.",
-"The captain is financially savvy and particularly proud of their investment portfolio.",
-"The captain is very status conscous and believe they are a very important person.",
-"The captain cannot be taunted.",
-]
-
+from sbs_utils import fs
 
 class ScienceRouter:
     def __init__(self):
@@ -33,7 +16,7 @@ class ScienceRouter:
             yield self.jump(self.friendly_science)
         elif query.has_role(self.task.SCIENCE_SELECTED_ID, "raider"):
             yield self.jump(self.raider_science)
-        yield self.end()
+        yield self.task.end()
 
     @label()
     def station_science(self):
@@ -71,35 +54,36 @@ class ScienceRouter:
 
     @label()
     def raider_science(self):
+        bio_intel = "The bio scan has failed."
+        taunt_intel = "The captain cannot be taunted."
         taunt_trait=query.get_inventory_value(self.task.SCIENCE_SELECTED_ID, "taunt_trait")
-        if taunt_trait is None:
-            taunt_intel = intel_list[-1] 
-        else:
-            side_index=0
-            if query.has_role(self.task.SCIENCE_SELECTED_ID, "kralien"):
-                side_index=0
-            elif query.has_role(self.task.SCIENCE_SELECTED_ID, "arvonian"):
-                side_index=1
-            elif query.has_role(self.task.SCIENCE_SELECTED_ID, "torgoth"):
-                side_index=2
-            elif query.has_role(self.task.SCIENCE_SELECTED_ID, "skaraan"):
-                side_index=3
-            taunt_index=side_index*3+taunt_trait
-            taunt_intel = intel_list[taunt_index]
+        if taunt_trait is not None and self.taunt_data is not None:
+            races = ["kralien", "arvonian", "torgoth", "skaraan", "ximni"]
+            race = None
+            for test in races:
+                if query.has_role(self.task.SCIENCE_SELECTED_ID, test):
+                    race = test
+                    bio_intel = f"The crew is made up of {race}."
+                    break
+
+            intel_list = self.taunt_data.get(race, None)
+            if intel_list is not None:
+                taunt_intel = intel_list[taunt_trait]['science']
+
 
         def scan_default(self, event):
-            return "Looks like some bad dudes"
+            return "Enemy vessel. Exercise caution."
 
         def scan_intel(self, event):
-            return f"{taunt_intel}"
+            t = taunt_intel
+            return t
         
         def scan_bio(self, event):
-            return "Whew can smell travel through space?"
+            b = bio_intel
+            return b
 
         yield self.await_science({
             "scan": scan_default,
             "bio": scan_bio,
             "itl": scan_intel,
         })        
-
-    

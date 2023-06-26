@@ -2,6 +2,7 @@ import sbs
 from sbs_utils.objects import PlayerShip, Npc, Terrain
 import random
 import sbs_utils.faces as faces
+import sbs_utils.names as names
 import sbs_utils.query as query
 import sbs_utils.scatter as scatter
 import sbs_utils.names as names
@@ -91,9 +92,12 @@ def  build_world(self):
 
 
 
-    
-    
-    enemyTypeNameList = ["kralien_dreadnaught","kralien_battleship","skaraan_defiler","cargo_ship","arvonian_carrier","torgoth_behemoth"]
+    enemyTypeNameList = []
+    enemyTypeNameList.extend(names.torgoth_ship_keys())
+    enemyTypeNameList.extend(names.kralien_ship_keys())
+    enemyTypeNameList.extend(names.skaraan_ship_keys())
+    enemyTypeNameList.extend(names.arvonian_ship_keys())
+    enemyTypeNameList.extend(names.ximni_ship_keys())
     enemy_prefix = "KLMNQ"
 
     enemy = 0
@@ -106,15 +110,23 @@ def  build_world(self):
     
     for v in spawn_points:
         r_type = random.choice(enemyTypeNameList)
+        race = r_type.split("_")
+        race = race[0]
+        if race=="xim":
+            race = "ximni"
+    
+        roles = f"{race}, raider"
         r_name = f"{random.choice(enemy_prefix)}_{enemy}"
-        spawn_data = Npc().spawn(sim, v.x, v.y, v.z, r_name, "RAIDER", r_type, "behav_npcship")
+        spawn_data = Npc().spawn(self.task.sim, v.x, v.y, v.z, r_name, roles, r_type, "behav_npcship")
         raider = spawn_data.py_object
-        faces.set_face(raider.id, faces.random_kralien())
-        raider.add_role("Raider")
+        # add a taunt trait
+        query.set_inventory_value(raider.id, "taunt_trait", random.randint(0,2))
+        #
+        # Should add a commnon funtion to call to get the face based on race
+        #
+        faces.set_face(raider.id, faces.random_face(race))
         enemy = enemy + 1
-        # for player in to_object_list(role("__PLAYER__")):
-        # 	do raider.start_task("NPC_Comms", {"player": player})
-        # next player
+        
     
     ####################
     # MAP TERRAIN	

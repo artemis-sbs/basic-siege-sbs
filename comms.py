@@ -2,11 +2,14 @@ import sbs
 import sbs_utils.query as query
 from sbs_utils.pymast.pymasttask import label
 from sbs_utils import faces
+from sbs_utils import fs
+from functools import partial
 
 class CommsRouter:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs) # This style of init makes it more mixin friendly
         self.route_comms_select(self.handle_comms)
+        self.taunt_data = fs.load_json_data(fs.get_mission_dir_filename("taunts.json"))
 
     @label()
     def handle_comms(self):
@@ -80,7 +83,7 @@ class CommsRouter:
     def npc_comms(self):
         yield self.await_comms({
             "Hail": self.comms_raider_hail,
-            "Taunt": ("red", self.comms_raider_taunt),
+            "Taunt": ("red", self.comms_taunts),
             "Surrender": ("yellow", self.comms_raider_surrender),
         })
         yield self.jump(self.npc_comms)
@@ -156,14 +159,6 @@ class CommsRouter:
     def comms_raider_hail(self, comms):
         comms.receive("We will destroy you, disgusting Terran scum!")
 
-    def comms_raider_taunt(self, comms):
-        player = comms.get_origin()
-        
-        if player is None:
-            return
-        text_line = f"You are a foolish Terran, { player.comms_id}.  We know that the taunt functionality is not currently implemented.^"
-        comms.receive(text_line)
-
     def comms_raider_surrender(self, comms):
         comms.receive("We will never surrender, disgusting Terran scum!")
 
@@ -181,3 +176,56 @@ class CommsRouter:
 
         yield self.jump(self.friendly_comms)
 
+    @label()
+    def comms_taunts(self, comms):
+        #
+        # Skip if the loading of taunts failed
+        #
+        if self.taunt_data is None:
+            self.task.end()
+
+        races = ["kralien", "arvonian", "torgoth", "skaraan", "ximni"]
+        race = None
+        for test in races:
+            if query.has_role(self.task.COMMS_SELECTED_ID, test):
+                race = test
+                break
+            
+        if race is None:
+            # No Taunt for you
+            yield self.jump(self.npc_comms)
+        #
+        # Present taunts
+        #
+        name = query.to_object(self.task.COMMS_ORIGIN_ID).name
+        taunt_trait=query.get_inventory_value(self.task.COMMS_SELECTED_ID, "taunt_trait")
+        enrage_value=0
+
+        def taunt_button(self, comms, data):
+            # Need to format the data
+            msg = data['transmit']
+            msg = msg.format(name=name)
+            comms.transmit(msg)
+            # failure
+            if taunt_trait!=0:
+                msg = data['failure']
+                msg = msg.format(name=name)
+                comms.receive(msg)
+            # success
+            else:
+                msg = data['success']
+                msg = msg.format(name=name)
+                comms.receive(msg)
+                enrage_value=self.task.sim.time_tick_counter+30*120
+                query.set_inventory_value(self.task.COMMS_SELECTED_ID, "enrage_value",(enrage_value, self.task.COMMS_ORIGIN_ID))
+
+        buttons = {}
+        for data in self.taunt_data[race]:
+            buttons[data['button']] = partial(taunt_button, data)
+
+
+        yield self.await_comms(
+            buttons
+        )
+        yield self.jump(self.npc_comms)
+        
