@@ -3,7 +3,7 @@ import sbs_utils.query as query
 from sbs_utils.pymast.pymasttask import label
 from sbs_utils import faces
 from sbs_utils import fs
-from functools import partial
+
 
 class CommsRouter:
     def __init__(self, *args, **kwargs):
@@ -221,7 +221,7 @@ class CommsRouter:
 
         buttons = {}
         for data in self.taunt_data[race]:
-            buttons[data['button']] = partial(taunt_button, data)
+            buttons[data['button']] =  lambda s,c: taunt_button(s,c,data)
 
 
         yield self.await_comms(
